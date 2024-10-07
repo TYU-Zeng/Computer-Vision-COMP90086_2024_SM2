@@ -14,7 +14,7 @@ class TrainingsDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx):
-        img_name = os.path.join(self.directory, self.data.iloc[idx, 0])
+        img_name = os.path.join(self.directory, str(self.data.iloc[idx, 0]))
         image = Image.open(img_name + '.jpg')
         label = self.data.iloc[idx, -1]
 
@@ -34,7 +34,7 @@ class TestDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx):
-        img_name = os.path.join(self.directory, self.data.iloc[idx, 0])
+        img_name = os.path.join(self.directory, str(self.data.iloc[idx, 0]))
         image = Image.open(img_name + '.jpg')
 
         if self.transform:

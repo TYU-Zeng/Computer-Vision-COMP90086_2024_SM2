@@ -34,6 +34,7 @@ class Trainer:
         self.data = pd.read_csv(self.csv_file)
         self.trainings_data, self.validation_data = self.split_data()
 
+        # data augmentation
         self.trainings_transform = transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
@@ -61,6 +62,12 @@ class Trainer:
         print(f'Trainings data: {len(trainings_data)}', f'Validation data: {len(validation_data)}')
         return trainings_data, validation_data
 
+
+    def accuracy(self, pred, true):
+        correct = (pred == true).sum().item()
+        total = len(true)
+        return correct / total
+
     def train(self):
         for epoch in range(self.num_epochs):
             self.model.train()
@@ -73,14 +80,18 @@ class Trainer:
                     self.optimizer.zero_grad()
                     outputs = self.model(images)
 
-                    predictions = torch.argmax(outputs, 1)
-
                     loss = self.criterion(outputs, labels)
                     loss.backward()
+
+                    training_loss = loss.item()
                     self.optimizer.step()
                     running_loss += loss.item()
-                    running_acc += (predictions == labels).sum().item()
-                    tepoch.set_postfix(loss=running_loss / len(self.trainings_loader), acc=running_acc / len(self.trainings_loader))
+
+                    predictions = torch.argmax(outputs, 1)
+                    acc = self.accuracy(predictions, labels)
+                    running_acc += acc
+
+                    tepoch.set_postfix(loss=loss.item(), acc=acc)
 
             # validation
             self.model.eval()
