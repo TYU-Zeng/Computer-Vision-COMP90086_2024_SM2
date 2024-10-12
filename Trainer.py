@@ -1,11 +1,12 @@
 import csv
 import os
-
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from sklearn.metrics import confusion_matrix, classification_report
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from sklearn.model_selection import StratifiedShuffleSplit
@@ -15,8 +16,10 @@ from ReadingDataset import TrainingsDataset
 
 
 class Trainer:
-    def __init__(self, csv_file, directory, model, batch_size=64, num_epochs=20,
+    def __init__(self, csv_file, directory, model, batch_size=64, num_epochs = 20,
                  learning_rate=0.001, stratify_feature='stable_height', validation_size=0.2):
+
+        # 128比64更好
         self.csv_file = csv_file
         self.directory = directory
         self.model = model
@@ -34,6 +37,14 @@ class Trainer:
 
         self.data = pd.read_csv(self.csv_file)
         self.trainings_data, self.validation_data = self.split_data()
+
+        # acc list
+        self.acc_list_train = []
+        self.acc_list_val = []
+
+        # loss list
+        self.loss_list_train = []
+        self.loss_list_val = []
 
         # data augmentation
         self.trainings_transform = transforms.Compose([
@@ -62,7 +73,6 @@ class Trainer:
 
         print(f'Trainings data: {len(trainings_data)}', f'Validation data: {len(validation_data)}')
         return trainings_data, validation_data
-
 
     def accuracy(self, pred, true):
         correct = (pred == true).sum().item()
@@ -97,17 +107,46 @@ class Trainer:
             # validation
             self.model.eval()
             correct = 0
-            total = 0
-            with torch.no_grad():
+            # total is the length of the validation data
+            total = len(self.validation_data)
+
+            all_preds = []
+            all_labels = []
+
+            with (torch.no_grad()):
                 for images, labels in self.validation_loader:
-                    images, labels = images.to(self.device), labels.to(self.device)
+                    images = images.to(self.device)
+                    labels = labels.to(self.device).long() - 1
                     outputs = self.model(images)
-                    predictions = torch.argmax(outputs, 1)
-                    total += labels.size(0)
+
+                    loss = self.criterion(outputs, labels)
+
+                    preds = torch.argmax(outputs, 1)
+                    all_preds.extend(preds.cpu().numpy())
+                    all_labels.extend(labels.cpu().numpy())
+
                     correct += (predictions == labels).sum().item()
 
-            print(f'Epoch {epoch + 1}, Loss: {running_loss / len(self.trainings_loader)}, '
-                  f'Accuracy: {100 * correct / total}')
+            self.acc_list_train.append(running_acc / len(self.trainings_loader))
+            self.acc_list_val.append(correct / total)
+
+            self.loss_list_train.append(running_loss / len(self.trainings_loader))
+            self.loss_list_val.append(loss.item())
+
+
+            print(f'Epoch {epoch + 1}, Training Loss: {running_loss / len(self.trainings_loader)}, '
+                  f'Valid Accuracy: {100 * correct / total}')
+
+            self.create_classification_report(torch.tensor(all_preds), torch.tensor(all_labels))
+            self.create_confusion_matrix(predictions, labels)
+
+
+
+
+
+
+
+
 
             # self.model.train()
             # running_loss = 0.0
@@ -135,4 +174,39 @@ class Trainer:
             #         total += labels.size(0)
             #         correct += (predictions == labels).sum().item()
             # print(f'Epoch {epoch + 1}, Accuracy: {100 * correct / total}')
+
+    def create_classification_report(self, predictions, targets):
+        pred = predictions.cpu().numpy()
+        labels = targets.cpu().numpy()
+        print(classification_report(labels, pred))
+
+    def create_confusion_matrix(self, predictions, targets):
+        pred = predictions.cpu().numpy()
+        labels = targets.cpu().numpy()
+        print(confusion_matrix(labels, pred))
+
+    def plt_curve(self):
+        # 绘制准确率曲线
+        plt.figure(figsize=(10, 5))
+        plt.subplot(1, 2, 1)
+        plt.plot(self.acc_list_train, label='Training Accuracy', color='blue', marker='o')
+        plt.plot(self.acc_list_val, label='Validation Accuracy', color='green', marker='o')
+        plt.xlabel('Epochs')
+        plt.ylabel('Accuracy')
+        plt.title('Accuracy Curve')
+        plt.legend()
+
+        # 绘制损失曲线
+        plt.subplot(1, 2, 2)
+        plt.plot(self.loss_list_train, label='Training Loss', color='blue', marker='o')
+        plt.plot(self.loss_list_val, label='Validation Loss', color='green', marker='o')
+        plt.xlabel('Epochs')
+        plt.ylabel('Loss')
+        plt.title('Loss Curve')
+        plt.legend()
+
+        # 显示绘图
+        plt.tight_layout()
+        plt.show()
+
 
