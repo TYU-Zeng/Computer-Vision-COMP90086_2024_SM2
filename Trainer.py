@@ -1,3 +1,4 @@
+import csv
 import os
 
 import numpy as np
@@ -134,3 +135,4 @@ class Trainer:
             #         total += labels.size(0)
             #         correct += (predictions == labels).sum().item()
             # print(f'Epoch {epoch + 1}, Accuracy: {100 * correct / total}')
+
