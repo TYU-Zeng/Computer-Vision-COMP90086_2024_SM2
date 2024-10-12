@@ -45,7 +45,7 @@ def predict(model, test_csv, test_directory, batch_size=64):
     # Save predictions to a CSV file
     with open('predictions.csv', 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(['ImageID', 'Prediction'])
+        writer.writerow(['id', 'stable_height'])
         writer.writerows(predictions)
 
     print("Predictions saved to predictions.csv")
