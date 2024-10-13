@@ -16,7 +16,7 @@ from ReadingDataset import TrainingsDataset
 
 
 class Trainer:
-    def __init__(self, csv_file, directory, model, batch_size=64, num_epochs = 20,
+    def __init__(self, csv_file, directory, model, batch_size=128, num_epochs = 20,
                  learning_rate=0.001, stratify_feature='stable_height', validation_size=0.2):
 
         # 128比64更好
