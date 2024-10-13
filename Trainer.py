@@ -127,7 +127,7 @@ class Trainer:
                     all_preds.extend(preds.cpu().numpy())
                     all_labels.extend(labels.cpu().numpy())
 
-                    correct += (predictions == labels).sum().item()
+                    correct += (preds == labels).sum().item()
 
             self.acc_list_train.append(running_acc / len(self.trainings_loader))
             self.acc_list_val.append(correct / total)
