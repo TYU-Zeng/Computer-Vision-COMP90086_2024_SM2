@@ -16,7 +16,7 @@ from ReadingDataset import TrainingsDataset
 
 
 class Trainer:
-    def __init__(self, csv_file, directory, model, batch_size=128, num_epochs = 20,
+    def __init__(self, csv_file, directory, model, batch_size=128, num_epochs = 1,
                  learning_rate=0.001, stratify_feature='stable_height', validation_size=0.2):
 
         # 128比64更好
@@ -33,7 +33,7 @@ class Trainer:
         self.model.to(self.device)
 
         self.criterion = nn.CrossEntropyLoss()
-        self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate, weight_decay=1e-4)
 
         self.data = pd.read_csv(self.csv_file)
         self.trainings_data, self.validation_data = self.split_data()
@@ -49,6 +49,8 @@ class Trainer:
         # data augmentation
         self.trainings_transform = transforms.Compose([
             transforms.Resize((224, 224)),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomAffine(degrees=(0, 0), scale=(0.8, 1.2)),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
