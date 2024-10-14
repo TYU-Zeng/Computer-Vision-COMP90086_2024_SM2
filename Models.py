@@ -4,7 +4,6 @@ from torchvision import models
 
 import timm
 
-
 class CoCaModel(nn.Module):
     def __init__(self):
         super(CoCaModel, self).__init__()
