@@ -2,17 +2,28 @@ import torch
 import torch.nn as nn
 from torchvision import models
 
-import timm
+
+import open_clip
+import torch.nn as nn
+
+
 
 class CoCaModel(nn.Module):
-    def __init__(self):
+    def __init__(self, num_classes=6):
         super(CoCaModel, self).__init__()
-        # 使用 timm 加载 CoCa 模型，选择预训练权重
-        self.model = timm.create_model('coca_Large', pretrained=True)
+        # Load the CoCa model (contrastive + captioning architecture)
+        self.model, _, preprocess = open_clip.create_model_and_transforms(
+            model_name="coca_ViT-L-14",
+            pretrained="mscoco_finetuned_laion2B-s13B-b90k"
+        )
 
-        # 修改最后的分类层，适应任务需要的输出类别
-        self.model.fc = nn.Sequential(
-            nn.Linear(2048, 1024),
+        # Disable the gradient computation for the CoCa model (use it as a feature extractor)
+        for param in self.model.parameters():
+            param.requires_grad = False
+
+        # Replace the classifier head with custom layers for classification
+        self.fc = nn.Sequential(
+            nn.Linear(self.model.visual.width, 1024),
             nn.ReLU(),
             nn.Dropout(0.2),
             nn.Linear(1024, 512),
@@ -20,11 +31,15 @@ class CoCaModel(nn.Module):
             nn.Dropout(0.2),
             nn.Linear(512, 128),
             nn.ReLU(),
-            nn.Linear(128, 6)
+            nn.Linear(128, num_classes)
         )
 
     def forward(self, x):
-        return self.model(x)
+        # Extract features using CoCa
+        features = self.model.encode_image(x)
+
+        # Pass features through the custom classifier
+        return self.fc(features)
 
 
 class ResNet(nn.Module):
@@ -52,7 +67,17 @@ class Inception(nn.Module):
     def __init__(self):
         super(Inception, self).__init__()
         self.model = models.inception_v3(pretrained=True)
-        self.model.fc = nn.Linear(2048, 6)
+        self.model.fc = nn.Sequential(
+            nn.Linear(2048, 1024),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(1024, 512),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(512, 128),
+            nn.ReLU(),
+            nn.Linear(128, 6)
+        )
 
     def forward(self, x):
 
