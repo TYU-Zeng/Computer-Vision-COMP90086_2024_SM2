@@ -6,7 +6,7 @@ import timm
 
 
 class CoCaModel(nn.Module):
-    def __init__(self, num_classes=6):
+    def __init__(self):
         super(CoCaModel, self).__init__()
         # 使用 timm 加载 CoCa 模型，选择预训练权重
         self.model = timm.create_model('coca_Large', pretrained=True)
