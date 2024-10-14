@@ -16,7 +16,7 @@ from ReadingDataset import TrainingsDataset
 
 
 class Trainer:
-    def __init__(self, csv_file, directory, model, batch_size=128, num_epochs = 40,
+    def __init__(self, csv_file, directory, model, batch_size=128, num_epochs=50,
                  learning_rate=0.001, stratify_feature='stable_height', validation_size=0.2):
 
         # 128比64更好
@@ -48,7 +48,7 @@ class Trainer:
 
         # data augmentation
         self.trainings_transform = transforms.Compose([
-            transforms.Resize((224, 224)),
+            transforms.Resize((299, 299)),
             transforms.RandomHorizontalFlip(),
             transforms.RandomAffine(degrees=(0, 0), scale=(0.8, 1.2)),
             transforms.ToTensor(),
@@ -56,7 +56,7 @@ class Trainer:
         ])
 
         self.validation_transform = transforms.Compose([
-            transforms.Resize((224, 224)),
+            transforms.Resize((299, 299)),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
@@ -91,9 +91,15 @@ class Trainer:
                 for images, labels in tepoch:
                     images, labels = images.to(self.device), labels.to(self.device).long() - 1
                     self.optimizer.zero_grad()
-                    outputs = self.model(images)
 
-                    loss = self.criterion(outputs, labels)
+                    # InceptionV3 在训练时返回两个输出，main_logits 和 aux_logits
+                    outputs, aux_outputs = self.model(images)
+
+                    # 计算主损失和辅助损失
+                    main_loss = self.criterion(outputs, labels)
+                    aux_loss = self.criterion(aux_outputs, labels)
+
+                    loss = main_loss + 0.4 * aux_loss
                     loss.backward()
 
                     training_loss = loss.item()
@@ -135,20 +141,11 @@ class Trainer:
             self.loss_list_train.append(running_loss / len(self.trainings_loader))
             self.loss_list_val.append(loss.item())
 
-
             print(f'Epoch {epoch + 1}, Training Loss: {running_loss / len(self.trainings_loader)}, '
                   f'Valid Accuracy: {100 * correct / total}')
 
             self.create_classification_report(torch.tensor(all_preds), torch.tensor(all_labels))
             self.create_confusion_matrix(predictions, labels)
-
-
-
-
-
-
-
-
 
             # self.model.train()
             # running_loss = 0.0

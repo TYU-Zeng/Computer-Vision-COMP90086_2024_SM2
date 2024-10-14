@@ -2,6 +2,31 @@ import torch
 import torch.nn as nn
 from torchvision import models
 
+import timm
+
+
+class CoCaModel(nn.Module):
+    def __init__(self, num_classes=6):
+        super(CoCaModel, self).__init__()
+        # 使用 timm 加载 CoCa 模型，选择预训练权重
+        self.model = timm.create_model('coca_Large', pretrained=True)
+
+        # 修改最后的分类层，适应任务需要的输出类别
+        self.model.fc = nn.Sequential(
+            nn.Linear(2048, 1024),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(1024, 512),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(512, 128),
+            nn.ReLU(),
+            nn.Linear(128, 6)
+        )
+
+    def forward(self, x):
+        return self.model(x)
+
 
 class ResNet(nn.Module):
     def __init__(self):
@@ -31,7 +56,13 @@ class Inception(nn.Module):
         self.model.fc = nn.Linear(2048, 6)
 
     def forward(self, x):
-        return self.model(x)
+
+        if self.training:
+            main_logits, aux_logits = self.model(x)
+            return main_logits, aux_logits
+        else:
+            main_logits = self.model(x)
+            return main_logits
 
 
 class VisionTransformer(nn.Module):
