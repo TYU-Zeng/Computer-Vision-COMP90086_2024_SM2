@@ -7,7 +7,6 @@ import open_clip
 import torch.nn as nn
 
 
-
 class CoCaModel(nn.Module):
     def __init__(self, num_classes=6):
         super(CoCaModel, self).__init__()
