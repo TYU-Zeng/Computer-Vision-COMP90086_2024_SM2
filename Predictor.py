@@ -48,7 +48,11 @@ class Prediction:
         with torch.no_grad():
             for images, image_ids in tqdm(self.test_dataset):
                 images = images.to(self.device)
-                outputs = self.model(images)
+
+                preprocessed_imgs = self.preprocess_image(images)
+
+
+                outputs = self.model(preprocessed_imgs)
                 preds = torch.argmax(outputs, dim = 1)
                 all_predictions.extend(preds.cpu().numpy())
                 all_image_ids.extend(image_ids.cpu().numpy())

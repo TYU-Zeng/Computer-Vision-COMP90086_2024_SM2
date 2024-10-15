@@ -12,6 +12,9 @@ from torchvision import transforms
 from sklearn.model_selection import StratifiedShuffleSplit
 from tqdm import tqdm
 
+import cv2
+
+
 from ReadingDataset import TrainingsDataset
 
 
@@ -81,6 +84,49 @@ class Trainer:
         total = len(true)
         return correct / total
 
+
+
+    def preprocess_image(self, batch_images):
+        """
+        Preprocess a batch of 3D rendered block stack images to 2D representations using depth map and edge detection.
+
+        Args:
+        - batch_images (tensor): A batch of 3D images.
+
+        Returns:
+        - processed_batch (tensor): The preprocessed batch of images with depth and edge features.
+        """
+        processed_batch = []
+        batch_images = batch_images.cpu().numpy()  # Convert tensor to numpy array for OpenCV processing
+
+        for img in batch_images:
+            # Convert from tensor (C, H, W) to (H, W, C) for OpenCV
+            img = np.transpose(img, (1, 2, 0))
+            img = (img * 255).astype(np.uint8)  # Convert back to image format
+
+            # Convert the image to grayscale for simplicity
+            gray_image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+            # Normalize the grayscale image to create a pseudo-depth map
+            depth_map = cv2.normalize(gray_image, None, 0, 255, cv2.NORM_MINMAX)
+
+            # Apply edge detection (Canny Edge Detector)
+            edges = cv2.Canny(depth_map, threshold1=30, threshold2=100)
+
+            # Stack the depth map and edges as channels
+            processed_image = np.stack((depth_map, edges), axis=-1)
+
+            # Convert back to tensor and normalize for the model
+            preprocess_transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.5, 0.5], std=[0.5, 0.5])  # Adjust normalization as needed
+            ])
+
+            processed_image = preprocess_transform(processed_image)
+            processed_batch.append(processed_image)
+
+        return torch.stack(processed_batch).to(self.device)
+
     def train(self):
         for epoch in range(self.num_epochs):
             self.model.train()
@@ -89,11 +135,14 @@ class Trainer:
 
             with tqdm(self.trainings_loader, unit='batch') as tepoch:
                 for images, labels in tepoch:
+
                     images, labels = images.to(self.device), labels.to(self.device).long() - 1
                     self.optimizer.zero_grad()
 
+                    preprocessed_img = self.preprocess_image(images)
+
                     # InceptionV3 在训练时返回两个输出，main_logits 和 aux_logits
-                    outputs, aux_outputs = self.model(images)
+                    outputs, aux_outputs = self.model(preprocessed_img)
 
                     # 计算主损失和辅助损失
                     main_loss = self.criterion(outputs, labels)
