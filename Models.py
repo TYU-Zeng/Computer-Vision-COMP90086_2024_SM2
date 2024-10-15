@@ -66,15 +66,28 @@ class Inception(nn.Module):
     def __init__(self):
         super(Inception, self).__init__()
         self.model = models.inception_v3(pretrained=True)
+
+        self.model.Conv2d_1a_3x3.conv = nn.Conv2d(
+            in_channels=2,  # Modify this to match the input channels from preprocessing
+            out_channels=32,
+            kernel_size=(3, 3),
+            stride=(2, 2),
+            bias=False
+        )
+
+
         self.model.fc = nn.Sequential(
             nn.Linear(2048, 1024),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope=0.01),
+
             nn.Dropout(0.2),
             nn.Linear(1024, 512),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope=0.01),
+
             nn.Dropout(0.2),
             nn.Linear(512, 128),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope=0.01),
+
             nn.Linear(128, 6)
         )
 
